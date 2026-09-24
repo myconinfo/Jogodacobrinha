@@ -15,24 +15,46 @@ let nextDirection;
 let score;
 let isRunning;
 let isPaused;
+let waitingToStart;
 let gameTimer;
+let countdownTimer;
 let bestScore = Number(localStorage.getItem('cobra-neon-best') || 0);
 bestScoreElement.textContent = bestScore;
 
-function startGame() {
+function startGame(waitForStart = false) {
   snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
   direction = { x: 1, y: 0 };
   nextDirection = direction;
   score = 0;
-  isRunning = true;
+  waitingToStart = waitForStart;
+  isRunning = !waitForStart;
   isPaused = false;
+  clearInterval(countdownTimer);
   scoreElement.textContent = score;
-  statusElement.textContent = 'Colete os pontos';
+  statusElement.textContent = waitForStart ? 'Pressione espaço para iniciar' : 'Colete os pontos';
   pauseButton.textContent = 'II';
   placeFood();
   clearInterval(gameTimer);
-  gameTimer = setInterval(update, 115);
+  if (isRunning) gameTimer = setInterval(update, 115);
   draw();
+}
+
+function beginPreparedGame() {
+  if (!waitingToStart) return;
+  waitingToStart = false;
+  let countdown = 3;
+  statusElement.textContent = `Começando em ${countdown}...`;
+  countdownTimer = setInterval(() => {
+    countdown -= 1;
+    if (countdown === 0) {
+      clearInterval(countdownTimer);
+      isRunning = true;
+      statusElement.textContent = 'Colete os pontos';
+      gameTimer = setInterval(update, 115);
+      return;
+    }
+    statusElement.textContent = `Começando em ${countdown}...`;
+  }, 1000);
 }
 
 function placeFood() {
@@ -134,7 +156,11 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     changeDirection(directions[event.key]);
   }
-  if (event.key === ' ') togglePause();
+  if (event.key === ' ') {
+    event.preventDefault();
+    if (waitingToStart) beginPreparedGame();
+    else togglePause();
+  }
 });
 
 document.querySelectorAll('[data-direction]').forEach((button) => {
@@ -145,5 +171,5 @@ document.querySelectorAll('[data-direction]').forEach((button) => {
 });
 
 pauseButton.addEventListener('click', togglePause);
-restartButton.addEventListener('click', startGame);
+restartButton.addEventListener('click', () => startGame(true));
 startGame();
